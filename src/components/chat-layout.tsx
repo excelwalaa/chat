@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { chats as initialChats, users as initialUsers, type Chat, type User } from '@/lib/data';
+import { chats as initialChats, users as initialUsers, type Chat, type User, type Message } from '@/lib/data';
 import { ChatList } from './chat-list';
 import { MessageView } from './message-view';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -22,15 +22,16 @@ export default function ChatLayout() {
     setChats(prevChats => prevChats.map(c => c.id === chatId ? {...c, unreadCount: 0} : c))
   }, []);
 
-  const handleSendMessage = (chatId: string, content: string) => {
+  const handleSendMessage = (chatId: string, message: Pick<Message, 'content' | 'attachment'>) => {
     setChats((prevChats) => {
       return prevChats.map((chat) => {
         if (chat.id === chatId) {
-          const newMessage = {
+          const newMessage: Message = {
             id: `msg${Date.now()}`,
             senderId: CURRENT_USER_ID,
-            content,
+            content: message.content,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            attachment: message.attachment,
           };
           return { ...chat, messages: [...chat.messages, newMessage] };
         }

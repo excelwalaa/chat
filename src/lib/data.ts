@@ -10,6 +10,11 @@ export type Message = {
   senderId: string;
   content: string;
   timestamp: string;
+  attachment?: {
+    type: 'image' | 'file';
+    url: string;
+    fileName?: string;
+  };
 };
 
 export type Chat = {
