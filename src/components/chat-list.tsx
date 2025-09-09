@@ -2,7 +2,7 @@
 "use client";
 
 import type { FC } from 'react';
-import { Bot, Plus, Search } from "lucide-react";
+import { Bot, Plus, Search, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -10,6 +10,8 @@ import type { Chat, User } from '@/lib/data';
 import { cn } from "@/lib/utils";
 import { UserAvatar } from './user-avatar';
 import { Badge } from './ui/badge';
+import { auth } from '@/lib/firebase';
+import { useSignOut } from 'react-firebase-hooks/auth';
 
 interface ChatListProps {
   chats: Chat[];
@@ -48,14 +50,21 @@ function formatTimestamp(timestamp: any) {
 }
 
 export const ChatList: FC<ChatListProps> = ({ chats, users, currentUserId, selectedChatId, onSelectChat }) => {
+  const [signOut] = useSignOut(auth);
+
   return (
     <div className="flex flex-col h-full bg-card border-r">
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold text-primary-dark font-headline">Connect Now</h1>
-          <Button size="icon" variant="ghost">
-            <Plus className="h-6 w-6" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="icon" variant="ghost">
+              <Plus className="h-6 w-6" />
+            </Button>
+            <Button size="icon" variant="ghost" onClick={() => signOut()}>
+              <LogOut className="h-6 w-6" />
+            </Button>
+          </div>
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />

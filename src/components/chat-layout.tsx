@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, doc, updateDoc, getDocs, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { type Chat, type User, type Message } from '@/lib/data';
 import { ChatList } from './chat-list';
 import { MessageView } from './message-view';
@@ -11,18 +11,21 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Bot } from 'lucide-react';
 import { users as initialUsers } from '@/lib/data';
-
-const CURRENT_USER_ID = 'user1';
+import { useAuthState } from 'react-firebase-hooks/auth';
 
 export default function ChatLayout() {
+  const [user] = useAuthState(auth);
   const [chats, setChats] = useState<Chat[]>([]);
   const [users] = useState<User[]>(initialUsers);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   
   const isMobile = useIsMobile();
+  const currentUserId = user?.uid || 'user1';
 
   useEffect(() => {
-    const q = query(collection(db, "chats"), where("participants", "array-contains", CURRENT_USER_ID));
+    if (!currentUserId) return;
+
+    const q = query(collection(db, "chats"), where("participants", "array-contains", currentUserId));
     
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
       const chatsData: Chat[] = [];
@@ -53,7 +56,7 @@ export default function ChatLayout() {
     });
 
     return () => unsubscribe();
-  }, [selectedChatId]);
+  }, [selectedChatId, currentUserId]);
 
   const handleSelectChat = useCallback((chatId: string) => {
     setSelectedChatId(chatId);
@@ -62,13 +65,13 @@ export default function ChatLayout() {
   }, []);
 
   const handleSendMessage = async (chatId: string, message: Pick<Message, 'content' | 'attachment'>) => {
-    if (!chatId) return;
+    if (!chatId || !currentUserId) return;
 
     const messagesColRef = collection(db, `chats/${chatId}/messages`);
     const chatRef = doc(db, 'chats', chatId);
 
     await addDoc(messagesColRef, {
-      senderId: CURRENT_USER_ID,
+      senderId: currentUserId,
       content: message.content,
       attachment: message.attachment || null,
       timestamp: serverTimestamp(),
@@ -88,7 +91,7 @@ export default function ChatLayout() {
           <MessageView
             chat={selectedChat}
             users={users}
-            currentUserId={CURRENT_USER_ID}
+            currentUserId={currentUserId}
             onSendMessage={handleSendMessage}
             onBack={() => setSelectedChatId(null)}
             isMobile={true}
@@ -97,7 +100,7 @@ export default function ChatLayout() {
           <ChatList
             chats={chats}
             users={users}
-            currentUserId={CURRENT_USER_ID}
+            currentUserId={currentUserId}
             selectedChatId={selectedChatId}
             onSelectChat={handleSelectChat}
           />
@@ -112,7 +115,7 @@ export default function ChatLayout() {
         <ChatList
           chats={chats}
           users={users}
-          currentUserId={CURRENT_USER_ID}
+          currentUserId={currentUserId}
           selectedChatId={selectedChatId}
           onSelectChat={handleSelectChat}
         />
@@ -122,7 +125,7 @@ export default function ChatLayout() {
           <MessageView
             chat={selectedChat}
             users={users}
-            currentUserId={CURRENT_USER_ID}
+            currentUserId={currentUserId}
             onSendMessage={handleSendMessage}
             isMobile={false}
           />
