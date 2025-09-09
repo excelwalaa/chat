@@ -1,3 +1,4 @@
+
 "use client";
 
 import { cn } from "@/lib/utils";
@@ -18,7 +19,7 @@ export function Message({ message, sender, isCurrentUser, isGroupChat }: Message
   return (
     <div
       className={cn(
-        "flex items-end gap-2 my-2 animate-message-in",
+        "flex items-end gap-2 my-2",
         isCurrentUser ? "justify-end" : "justify-start"
       )}
     >

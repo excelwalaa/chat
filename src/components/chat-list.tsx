@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { FC } from 'react';
@@ -40,6 +41,12 @@ const getChatDisplayInfo = (chat: Chat, currentUserId: string, users: User[]) =>
   };
 };
 
+function formatTimestamp(timestamp: any) {
+    if (!timestamp) return '';
+    const date = timestamp.toDate();
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 export const ChatList: FC<ChatListProps> = ({ chats, users, currentUserId, selectedChatId, onSelectChat }) => {
   return (
     <div className="flex flex-col h-full bg-card border-r">
@@ -59,7 +66,7 @@ export const ChatList: FC<ChatListProps> = ({ chats, users, currentUserId, selec
         <nav className="p-2 space-y-1">
           {chats.map((chat) => {
             const displayInfo = getChatDisplayInfo(chat, currentUserId, users);
-            const lastMessage = chat.messages[chat.messages.length - 1];
+            const lastMessage = chat.lastMessage;
 
             return (
               <button
@@ -83,7 +90,7 @@ export const ChatList: FC<ChatListProps> = ({ chats, users, currentUserId, selec
                 <div className="flex-1 overflow-hidden">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold truncate">{displayInfo.name}</h3>
-                    <p className="text-xs text-muted-foreground">{lastMessage?.timestamp}</p>
+                    <p className="text-xs text-muted-foreground">{formatTimestamp(lastMessage?.timestamp)}</p>
                   </div>
                   <div className="flex items-center justify-between mt-1">
                     <p className="text-sm text-muted-foreground truncate pr-2">
