@@ -9,25 +9,41 @@ import { ChatList } from './chat-list';
 import { MessageView } from './message-view';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Bot } from 'lucide-react';
-import { users as initialUsers } from '@/lib/data';
+import { Bot, UserPlus } from 'lucide-react';
 import { useAuthState } from 'react-firebase-hooks/auth';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
+import { Button } from './ui/button';
+import { UserAvatar } from './user-avatar';
+
 
 export default function ChatLayout() {
   const [user] = useAuthState(auth);
   const [chats, setChats] = useState<Chat[]>([]);
-  const [users] = useState<User[]>(initialUsers);
+  const [users, setUsers] = useState<User[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [isNewChatDialogOpen, setIsNewChatDialogOpen] = useState(false);
   
   const isMobile = useIsMobile();
-  const currentUserId = user?.uid || 'user1';
+  const currentUserId = user?.uid;
 
   useEffect(() => {
     if (!currentUserId) return;
 
+    const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
+      const usersData = snapshot.docs.map(doc => doc.data() as User);
+      setUsers(usersData);
+    });
+
     const q = query(collection(db, "chats"), where("participants", "array-contains", currentUserId));
     
-    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+    const chatsUnsubscribe = onSnapshot(q, async (querySnapshot) => {
       const chatsData: Chat[] = [];
       for (const chatDoc of querySnapshot.docs) {
         const chatData = chatDoc.data();
@@ -55,7 +71,10 @@ export default function ChatLayout() {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      usersUnsubscribe();
+      chatsUnsubscribe();
+    }
   }, [selectedChatId, currentUserId]);
 
   const handleSelectChat = useCallback((chatId: string) => {
@@ -82,7 +101,31 @@ export default function ChatLayout() {
     });
   };
 
+  const handleCreateNewChat = async (partnerId: string) => {
+    if (!currentUserId) return;
+
+    const existingChat = chats.find(chat => 
+        chat.type === 'direct' && chat.participants.includes(partnerId)
+    );
+
+    if (existingChat) {
+      setSelectedChatId(existingChat.id);
+      setIsNewChatDialogOpen(false);
+      return;
+    }
+
+    const newChatRef = await addDoc(collection(db, 'chats'), {
+      type: 'direct',
+      participants: [currentUserId, partnerId],
+      unreadCount: 0,
+    });
+
+    setSelectedChatId(newChatRef.id);
+    setIsNewChatDialogOpen(false);
+  };
+
   const selectedChat = chats.find((chat) => chat.id === selectedChatId);
+  const currentUser = users.find(u => u.id === currentUserId);
 
   if (isMobile) {
     return (
@@ -91,7 +134,7 @@ export default function ChatLayout() {
           <MessageView
             chat={selectedChat}
             users={users}
-            currentUserId={currentUserId}
+            currentUserId={currentUserId!}
             onSendMessage={handleSendMessage}
             onBack={() => setSelectedChatId(null)}
             isMobile={true}
@@ -100,9 +143,11 @@ export default function ChatLayout() {
           <ChatList
             chats={chats}
             users={users}
-            currentUserId={currentUserId}
+            currentUserId={currentUserId!}
             selectedChatId={selectedChatId}
             onSelectChat={handleSelectChat}
+            onNewChat={() => setIsNewChatDialogOpen(true)}
+            currentUser={currentUser}
           />
         )}
       </div>
@@ -115,9 +160,11 @@ export default function ChatLayout() {
         <ChatList
           chats={chats}
           users={users}
-          currentUserId={currentUserId}
+          currentUserId={currentUserId!}
           selectedChatId={selectedChatId}
           onSelectChat={handleSelectChat}
+          onNewChat={() => setIsNewChatDialogOpen(true)}
+          currentUser={currentUser}
         />
       </div>
       <main className="flex-1 bg-background">
@@ -125,7 +172,7 @@ export default function ChatLayout() {
           <MessageView
             chat={selectedChat}
             users={users}
-            currentUserId={currentUserId}
+            currentUserId={currentUserId!}
             onSendMessage={handleSendMessage}
             isMobile={false}
           />
@@ -139,12 +186,37 @@ export default function ChatLayout() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p>Select a conversation from the list to start chatting.</p>
+                <p>Select a conversation from the list to start chatting, or start a new one!</p>
               </CardContent>
+              <CardFooter>
+                 <Button onClick={() => setIsNewChatDialogOpen(true)} className="w-full">
+                    <UserPlus className="mr-2" />
+                    New Chat
+                </Button>
+              </CardFooter>
             </Card>
           </div>
         )}
       </main>
+      <Dialog open={isNewChatDialogOpen} onOpenChange={setIsNewChatDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Start a new chat</DialogTitle>
+            <DialogDescription>Select a user to start a conversation with.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-4">
+            {users.filter(u => u.id !== currentUserId).map(user => (
+              <div key={user.id} className="flex items-center justify-between p-2 rounded-md hover:bg-accent">
+                <div className="flex items-center gap-3">
+                  <UserAvatar user={user} />
+                  <span>{user.name}</span>
+                </div>
+                <Button onClick={() => handleCreateNewChat(user.id)}>Chat</Button>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSignInWithEmailAndPassword, useCreateUserWithEmailAndPassword } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,10 +12,12 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { doc, setDoc } from 'firebase/firestore';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [signInWithEmailAndPassword, , signInLoading, signInError] = useSignInWithEmailAndPassword(auth);
   const [createUserWithEmailAndPassword, , signUpLoading, signUpError] = useCreateUserWithEmailAndPassword(auth);
   const router = useRouter();
@@ -35,8 +37,25 @@ export default function LoginPage() {
   };
 
   const handleSignUp = async () => {
-    const success = await createUserWithEmailAndPassword(email, password);
-    if (success) {
+    if (!name) {
+      toast({
+        variant: "destructive",
+        title: "Sign Up Failed",
+        description: "Please enter your name.",
+      });
+      return;
+    }
+    const newUserCredential = await createUserWithEmailAndPassword(email, password);
+    if (newUserCredential) {
+      const user = newUserCredential.user;
+      const userRef = doc(db, 'users', user.uid);
+      await setDoc(userRef, {
+        id: user.uid,
+        name: name,
+        email: user.email,
+        avatar: `https://picsum.photos/seed/${user.uid}/200/200`,
+        status: 'online'
+      });
       router.push('/');
     } else if (signUpError) {
         toast({
@@ -91,6 +110,10 @@ export default function LoginPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+               <div className="space-y-2">
+                <Label htmlFor="name-signup">Name</Label>
+                <Input id="name-signup" type="text" placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
                <div className="space-y-2">
                 <Label htmlFor="email-signup">Email</Label>
                 <Input id="email-signup" type="email" placeholder="m@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />

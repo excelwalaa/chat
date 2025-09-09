@@ -19,6 +19,8 @@ interface ChatListProps {
   currentUserId: string;
   selectedChatId: string | null;
   onSelectChat: (chatId: string) => void;
+  onNewChat: () => void;
+  currentUser?: User;
 }
 
 const getChatPartner = (chat: Chat, currentUserId: string, users: User[]) => {
@@ -49,16 +51,19 @@ function formatTimestamp(timestamp: any) {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-export const ChatList: FC<ChatListProps> = ({ chats, users, currentUserId, selectedChatId, onSelectChat }) => {
+export const ChatList: FC<ChatListProps> = ({ chats, users, currentUserId, selectedChatId, onSelectChat, onNewChat, currentUser }) => {
   const [signOut] = useSignOut(auth);
 
   return (
     <div className="flex flex-col h-full bg-card border-r">
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-primary-dark font-headline">Connect Now</h1>
+           <div className="flex items-center gap-2">
+            {currentUser && <UserAvatar user={currentUser} />}
+            <h1 className="text-xl font-bold text-primary-dark font-headline">{currentUser?.name}</h1>
+          </div>
           <div className="flex items-center gap-2">
-            <Button size="icon" variant="ghost">
+            <Button size="icon" variant="ghost" onClick={onNewChat}>
               <Plus className="h-6 w-6" />
             </Button>
             <Button size="icon" variant="ghost" onClick={() => signOut()}>
